@@ -19,11 +19,13 @@ import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Calendar;
 
 public class MainActivity extends AppCompatActivity {
     private static final String DEBUG_TAG = "HttpExample";
     private String stringUrl;
     private TextView textView;
+    private int[] currentTime;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,6 +33,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         textView = (TextView) findViewById(R.id.myText);
         stringUrl = "http://data.foli.fi/gtfs/trips/trip/00005333__5333generatedBlock";
+        setCurrentTime();
     }
 
     @Override
@@ -54,7 +57,18 @@ public class MainActivity extends AppCompatActivity {
 
         return super.onOptionsItemSelected(item);
     }
-
+    // When called, refreshes the current time using the information provided by Calendar.
+    public void setCurrentTime(){
+        int[] time = new int[3];
+        Calendar c = Calendar.getInstance();
+        time[0] = c.get(Calendar.HOUR_OF_DAY);
+        time[1] = c.get(Calendar.MINUTE);
+        time[2] = c.get(Calendar.SECOND);
+        currentTime = time;
+    }
+    public int[] getCurrentTime() {
+        return currentTime;
+    }
 
     // When user clicks button, calls AsyncTask.
     // Before attempting to fetch the URL, makes sure that there is a network connection.
