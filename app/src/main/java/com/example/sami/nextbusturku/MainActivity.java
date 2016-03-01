@@ -37,7 +37,9 @@ public class MainActivity extends AppCompatActivity {
     private static final String DEBUG_TAG = "HttpExample";
     private String stringUrlStop = "http://data.foli.fi/gtfs/stop_times/stop/447";
     private String stringUrlTrip = "http://data.foli.fi/gtfs/trips/trip/";
+    private String stringUrlRoutes = "http://data.foli.fi/gtfs/routes";
     private String tripId;
+    private String routeId;
     private String downloadedString;
     protected boolean downloadComplete = false;
     protected int downloadCount = 0;
@@ -127,6 +129,26 @@ public class MainActivity extends AppCompatActivity {
         }
         return nextTrip;
     }
+    // Hakee routes-jsonista routeobjektin jolla on haluttu routeId
+    public JSONObject getRouteObject(JSONArray array){
+        JSONObject route = new JSONObject();
+        for (int i = 0; i < array.length(); i++) {
+
+            try {
+                route = array.getJSONObject(i);
+
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            if (route.optString("route_id").equals(routeId)) {
+                //  textView.setText(stopTime.toString());
+                break;
+            }
+
+        }
+        return route;
+    }
 
     // kutsutaan asynctaskin onPostExcecutesta, tekee pysäkki-jsonin ja etsii siitä seuraavan tripin
     public void findNextTrip(){
@@ -144,6 +166,34 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
+
+    // kutsutaan asynctaskin onPostExcecutesta, tekee tripin jsonin ja hakee siitä routeId:n
+    public void findRoute(){
+        try {
+
+            JSONArray tripArray = new JSONArray(downloadedString); // <----------------------TEKEE UUDELLA STRINGILLÄ
+            JSONObject tripInfo = tripArray.getJSONObject(0);
+            routeId = tripInfo.optString("route_id");
+           // textView2.setText(stopTime.toString() + " / " + tripInfo.optString("route_id"));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+    // kutsutaan asynctaskin onPostExcecutesta, hakee saapuvan linjan nimen ja näyttää sen ja saapumisajan textviewissä
+    public void findShortName(){
+        try {
+
+            JSONArray routeArray = new JSONArray(downloadedString); // <----------------------TEKEE UUDELLA STRINGILLÄ
+            JSONObject route = getRouteObject(routeArray);
+
+            textView2.setText(stopTime.toString()+" / "+route.optString("route_short_name"));
+            // textView2.setText(tripInfo.toString(3));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+    /*
     public void myClickHandler(View view) {
 
         stopString = downloadedString;
@@ -160,19 +210,8 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
-
-    // kutsutaan asynctaskin onPostExcecutesta, tekee tripin jsonin ja hakee siitä routeId:n
-    public void findRoute(){
-        try {
-
-            JSONArray tripArray = new JSONArray(downloadedString); // <----------------------TEKEE UUDELLA STRINGILLÄ
-            JSONObject tripInfo = tripArray.getJSONObject(0);
-            textView2.setText(stopTime.toString()+" / "+tripInfo.optString("route_id"));
-            // textView2.setText(tripInfo.toString(3));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
+    */
+    /*
     public void myClickHandler2(View view) {
 
 
@@ -186,6 +225,7 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+    */
 
     @Override
     public void onStart() {
@@ -262,10 +302,14 @@ public class MainActivity extends AppCompatActivity {
             switch (downloadCount){
                 case 0:
                     findNextTrip();
-                    initiateDownload(stringUrlTrip+tripId);
+                    initiateDownload(stringUrlTrip + tripId);
 
                 case 1:
                     findRoute();
+                    initiateDownload(stringUrlRoutes);
+
+                case 2:
+                    findShortName();
             }
             downloadCount++;
 

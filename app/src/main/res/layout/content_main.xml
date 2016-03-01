@@ -18,22 +18,9 @@
         android:layout_height="wrap_content"
         android:text="" />
 
-    <Button
-        android:id="@+id/myButton"
-        android:onClick="myClickHandler"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerVertical="true"
-        android:layout_centerHorizontal="true" />
 
-    <Button
-        android:id="@+id/myButton2"
-        android:onClick="myClickHandler2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/myButton"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="44dp" />
+
+
 
     <TextView
         android:id="@+id/myText2"
