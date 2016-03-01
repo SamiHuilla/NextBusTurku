@@ -1,8 +1,10 @@
 package com.example.sami.nextbusturku;
 
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -11,6 +13,10 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
+
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.common.api.GoogleApiClient;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -24,38 +30,44 @@ import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Calendar;
 
 public class MainActivity extends AppCompatActivity {
     private static final String DEBUG_TAG = "HttpExample";
-    private String stringUrlStop;
+    private String stringUrlStop = "http://data.foli.fi/gtfs/stop_times/stop/447";
+    private String stringUrlTrip = "http://data.foli.fi/gtfs/trips/trip/";
+    private String tripId;
     private String downloadedString;
+    protected boolean downloadComplete = false;
+    protected int downloadCount = 0;
     private String stopString = "";
     private TextView textView;
-    private int[] currentTime;
+    private TextView textView2;
+    private TimeFormat currentTime;
+    private TimeFormat stopTime;
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    private GoogleApiClient client;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         textView = (TextView) findViewById(R.id.myText);
-        stringUrlStop = "http://data.foli.fi/gtfs/stop_times/stop/447";
+        textView2 = (TextView) findViewById(R.id.myText2);
         setCurrentTime();
 
-        ConnectivityManager connMgr = (ConnectivityManager)
-                getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
-        if (networkInfo != null && networkInfo.isConnected()) {
-            new DownloadWebpageTask().execute(stringUrlStop);
-        } else {
-            textView.setText("No network connection available.");
-        }
-       // stopString = "{\"Stop\" :"+downloadedString+"}";
+        initiateDownload(stringUrlStop);
 
 
 
-
-
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
     @Override
@@ -79,34 +91,152 @@ public class MainActivity extends AppCompatActivity {
 
         return super.onOptionsItemSelected(item);
     }
+
     // When called, refreshes the current time using the information provided by Calendar.
-    public void setCurrentTime(){
-        int[] time = new int[3];
+    public void setCurrentTime() {
+        TimeFormat time = new TimeFormat();
         Calendar c = Calendar.getInstance();
-        time[0] = c.get(Calendar.HOUR_OF_DAY);
-        time[1] = c.get(Calendar.MINUTE);
-        time[2] = c.get(Calendar.SECOND);
+        time.setHour(c.get(Calendar.HOUR_OF_DAY));
+        time.setMinute(c.get(Calendar.MINUTE));
+        time.setSecond(c.get(Calendar.SECOND));
         currentTime = time;
     }
-    public int[] getCurrentTime() {
+
+    public TimeFormat getCurrentTime() {
         return currentTime;
     }
 
-    // When user clicks button, calls AsyncTask.
-    // Before attempting to fetch the URL, makes sure that there is a network connection.
-    public void myClickHandler(View view) {
+    // Hakee pysäkin aikataulu-jsonista seuraavan pysähtyvän vuoron
+    public JSONObject nextTrip(JSONArray array) {
+        stopTime = new TimeFormat();
+        JSONObject nextTrip = new JSONObject();
+        for (int i = 0; i < array.length(); i++) {
 
+            try {
+                nextTrip = array.getJSONObject(i);
+                stopTime.update(nextTrip.optString("arrival_time"));
 
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            if (stopTime.compareTo(currentTime) == 1) {
+              //  textView.setText(stopTime.toString());
+                break;
+            }
+
+        }
+        return nextTrip;
+    }
+
+    // kutsutaan asynctaskin onPostExcecutesta, tekee pysäkki-jsonin ja etsii siitä seuraavan tripin
+    public void findNextTrip(){
+        stopString = downloadedString;
         try {
             //JSONObject stop = new JSONObject(stopString);
 
-            JSONArray stopArray = new JSONArray(downloadedString);
-            textView.setText(stopArray.getJSONObject(0).optString("arrival_time"));
+            JSONArray stopArray = new JSONArray(stopString);
+            JSONObject trip = nextTrip(stopArray);
+            tripId = trip.optString("trip_id");
+            textView.setText(tripId);
+           // initiateDownload(stringUrlTrip+tripId);
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+    public void myClickHandler(View view) {
+
+        stopString = downloadedString;
+        try {
+            //JSONObject stop = new JSONObject(stopString);
+
+            JSONArray stopArray = new JSONArray(stopString);
+            JSONObject trip = nextTrip(stopArray);
+            String tripId = trip.optString("trip_id");
+            textView.setText(tripId);
+            initiateDownload(stringUrlTrip + tripId);
+
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
 
+    // kutsutaan asynctaskin onPostExcecutesta, tekee tripin jsonin ja hakee siitä routeId:n
+    public void findRoute(){
+        try {
+
+            JSONArray tripArray = new JSONArray(downloadedString); // <----------------------TEKEE UUDELLA STRINGILLÄ
+            JSONObject tripInfo = tripArray.getJSONObject(0);
+            textView2.setText(stopTime.toString()+" / "+tripInfo.optString("route_id"));
+            // textView2.setText(tripInfo.toString(3));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+    public void myClickHandler2(View view) {
+
+
+        try {
+
+            JSONArray tripArray = new JSONArray(downloadedString); // <----------------------TEKEE UUDELLA STRINGILLÄ
+            JSONObject tripInfo = tripArray.getJSONObject(0);
+             textView2.setText(stopTime.toString()+" / "+tripInfo.optString("route_id"));
+           // textView2.setText(tripInfo.toString(3));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client.connect();
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "Main Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app deep link URI is correct.
+                Uri.parse("android-app://com.example.sami.nextbusturku/http/host/path")
+        );
+        AppIndex.AppIndexApi.start(client, viewAction);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "Main Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app deep link URI is correct.
+                Uri.parse("android-app://com.example.sami.nextbusturku/http/host/path")
+        );
+        AppIndex.AppIndexApi.end(client, viewAction);
+        client.disconnect();
+    }
+
+    public void initiateDownload (String url){
+        ConnectivityManager connMgr = (ConnectivityManager)
+                getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+        if (networkInfo != null && networkInfo.isConnected()) {
+            new DownloadWebpageTask().execute(url);
+        } else {
+            textView.setText("No network connection available.");
+        }
+    }
     // Uses AsyncTask to create a task away from the main UI thread. This task takes a
     // URL string and uses it to create an HttpUrlConnection. Once the connection
     // has been established, the AsyncTask downloads the contents of the webpage as
@@ -123,10 +253,27 @@ public class MainActivity extends AppCompatActivity {
                 return "Unable to retrieve web page. URL may be invalid.";
             }
         }
+
         // onPostExecute displays the results of the AsyncTask.
         @Override
         protected void onPostExecute(String result) {
             downloadedString = result;
+            downloadComplete = true;
+            switch (downloadCount){
+                case 0:
+                    findNextTrip();
+                    initiateDownload(stringUrlTrip+tripId);
+
+                case 1:
+                    findRoute();
+            }
+            downloadCount++;
+
+
+        }
+        @Override
+        protected void onPreExecute(){
+            downloadComplete = false;
         }
 
         // Given a URL, establishes an HttpUrlConnection and retrieves
