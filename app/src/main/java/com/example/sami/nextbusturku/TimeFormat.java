@@ -29,9 +29,10 @@ public class TimeFormat implements Comparable {
     }
     public void update(String time){
         String[] splitted = time.split(":");
-        this.hour = Integer.parseInt(splitted[0]);
-        this.minute = Integer.parseInt(splitted[1]);
-        this.second = Integer.parseInt(splitted[2]);
+        this.hour = Integer.parseInt(splitted[0],10);
+        this.minute = Integer.parseInt(splitted[1],10);
+        this.second = Integer.parseInt(splitted[2],10);
+
     }
     // String formaatissa "hh:mm:ss"
     public String toString(){

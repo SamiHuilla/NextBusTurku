@@ -35,7 +35,8 @@ import java.util.Calendar;
 
 public class MainActivity extends AppCompatActivity {
     private static final String DEBUG_TAG = "HttpExample";
-    private String stringUrlStop = "http://data.foli.fi/gtfs/stop_times/stop/447";
+    private String stringUrlStop = "http://data.foli.fi/gtfs/stop_times/stop/447"; //Yo-kylä
+    private String stringUrlStop2 = "http://data.foli.fi/gtfs/stop_times/stop/T42"; //Kauppatori
     private String stringUrlTrip = "http://data.foli.fi/gtfs/trips/trip/";
     private String stringUrlRoutes = "http://data.foli.fi/gtfs/routes";
     private String tripId;
@@ -44,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     protected boolean downloadComplete = false;
     protected int downloadCount = 0;
     private String stopString = "";
+    private String info = "";
     private TextView textView;
     private TextView textView2;
     private TimeFormat currentTime;
@@ -63,7 +65,9 @@ public class MainActivity extends AppCompatActivity {
         textView2 = (TextView) findViewById(R.id.myText2);
         setCurrentTime();
 
-        initiateDownload(stringUrlStop);
+        initiateDownload(stringUrlStop2);
+
+
 
 
 
@@ -103,6 +107,28 @@ public class MainActivity extends AppCompatActivity {
         time.setSecond(c.get(Calendar.SECOND));
         currentTime = time;
     }
+    // Returns the string
+    public String currentService(){
+        Calendar calendar = Calendar.getInstance();
+        int day = calendar.get(Calendar.DAY_OF_WEEK);
+        switch(day){
+            case Calendar.MONDAY:
+                return "A:FOLI_Arki";
+            case Calendar.TUESDAY:
+                return "A:FOLI_Arki";
+            case Calendar.WEDNESDAY:
+                return "A:FOLI_Arki";
+            case Calendar.THURSDAY:
+                return "A:FOLI_Arki";
+            case Calendar.FRIDAY:
+                return "A:FOLI_Arki";
+            case Calendar.SATURDAY:
+                return "L:FOLI_Lauantai";
+            case Calendar.SUNDAY:
+                return "S:FOLI_Pyha";
+        }
+        return null;
+    }
 
     public TimeFormat getCurrentTime() {
         return currentTime;
@@ -111,16 +137,20 @@ public class MainActivity extends AppCompatActivity {
     // Hakee pysäkin aikataulu-jsonista seuraavan pysähtyvän vuoron
     public JSONObject nextTrip(JSONArray array) {
         stopTime = new TimeFormat();
+        String arrivalTime;
         JSONObject nextTrip = new JSONObject();
         for (int i = 0; i < array.length(); i++) {
 
             try {
                 nextTrip = array.getJSONObject(i);
-                stopTime.update(nextTrip.optString("arrival_time"));
+                arrivalTime=nextTrip.getString("arrival_time");
+              //  textView.setText(arrivalTime);
+                stopTime.update(arrivalTime);
 
             } catch (JSONException e) {
                 e.printStackTrace();
             }
+            // exit loop when the next arrival time has been found:
             if (stopTime.compareTo(currentTime) == 1) {
               //  textView.setText(stopTime.toString());
                 break;
@@ -159,8 +189,8 @@ public class MainActivity extends AppCompatActivity {
             JSONArray stopArray = new JSONArray(stopString);
             JSONObject trip = nextTrip(stopArray);
             tripId = trip.optString("trip_id");
-            textView.setText(tripId);
-           // initiateDownload(stringUrlTrip+tripId);
+           // textView.setText(tripId);
+
 
         } catch (JSONException e) {
             e.printStackTrace();
@@ -172,10 +202,10 @@ public class MainActivity extends AppCompatActivity {
     public void findRoute(){
         try {
 
-            JSONArray tripArray = new JSONArray(downloadedString); // <----------------------TEKEE UUDELLA STRINGILLÄ
+            JSONArray tripArray = new JSONArray(downloadedString);
             JSONObject tripInfo = tripArray.getJSONObject(0);
             routeId = tripInfo.optString("route_id");
-           // textView2.setText(stopTime.toString() + " / " + tripInfo.optString("route_id"));
+
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -184,48 +214,16 @@ public class MainActivity extends AppCompatActivity {
     public void findShortName(){
         try {
 
-            JSONArray routeArray = new JSONArray(downloadedString); // <----------------------TEKEE UUDELLA STRINGILLÄ
+            JSONArray routeArray = new JSONArray(downloadedString);
             JSONObject route = getRouteObject(routeArray);
-
-            textView2.setText(stopTime.toString()+" / "+route.optString("route_short_name"));
-            // textView2.setText(tripInfo.toString(3));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
-    /*
-    public void myClickHandler(View view) {
-
-        stopString = downloadedString;
-        try {
-            //JSONObject stop = new JSONObject(stopString);
-
-            JSONArray stopArray = new JSONArray(stopString);
-            JSONObject trip = nextTrip(stopArray);
-            String tripId = trip.optString("trip_id");
-            textView.setText(tripId);
-            initiateDownload(stringUrlTrip + tripId);
+            info = stopTime.toString()+" / "+route.optString("route_short_name");
+            textView2.setText(info);
 
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
-    */
-    /*
-    public void myClickHandler2(View view) {
 
-
-        try {
-
-            JSONArray tripArray = new JSONArray(downloadedString); // <----------------------TEKEE UUDELLA STRINGILLÄ
-            JSONObject tripInfo = tripArray.getJSONObject(0);
-             textView2.setText(stopTime.toString()+" / "+tripInfo.optString("route_id"));
-           // textView2.setText(tripInfo.toString(3));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
-    */
 
     @Override
     public void onStart() {
@@ -304,14 +302,18 @@ public class MainActivity extends AppCompatActivity {
                     findNextTrip();
                     initiateDownload(stringUrlTrip + tripId);
 
+                    currentTime = stopTime;
                 case 1:
                     findRoute();
                     initiateDownload(stringUrlRoutes);
 
+
                 case 2:
                     findShortName();
+
             }
             downloadCount++;
+
 
 
         }

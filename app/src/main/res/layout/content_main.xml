@@ -32,4 +32,10 @@
         android:layout_alignParentStart="true"
         android:layout_marginTop="34dp" />
 
+    <AutoCompleteTextView xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/autocomplete_stop"
+        android:layout_below="@+id/myText2"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" />
+
 </RelativeLayout>
