@@ -12,6 +12,8 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.TextView;
 
 import com.google.android.gms.appindexing.Action;
@@ -27,7 +29,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
+import java.io.Writer;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -42,14 +46,17 @@ public class MainActivity extends AppCompatActivity {
     private String tripId;
     private String routeId;
     private String downloadedString;
+    private String[] stopnumbers;
     protected boolean downloadComplete = false;
     protected int downloadCount = 0;
     private String stopString = "";
     private String info = "";
     private TextView textView;
     private TextView textView2;
+    private AutoCompleteTextView autoCompleteTextView;
     private TimeFormat currentTime;
     private TimeFormat stopTime;
+   // private JSONObject stopsjson = new JSONObject();
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
      * See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -61,8 +68,17 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        /*
+        stopsjson = JsonFromResource(R.raw.stops);
+        JSONArray numarray = stopsjson.names();
+        */
         textView = (TextView) findViewById(R.id.myText);
         textView2 = (TextView) findViewById(R.id.myText2);
+        /*
+        autoCompleteTextView = (AutoCompleteTextView) findViewById(R.id.autocomplete_stop);
+        ArrayAdapter adapter = new ArrayAdapter(this,android.R.layout.simple_list_item_1,stopnumbers);
+        autoCompleteTextView.setAdapter(adapter);
+        */
         setCurrentTime();
 
         initiateDownload(stringUrlStop2);
@@ -107,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
         time.setSecond(c.get(Calendar.SECOND));
         currentTime = time;
     }
-    // Returns the string
+    // Returns the string depending on current day
     public String currentService(){
         Calendar calendar = Calendar.getInstance();
         int day = calendar.get(Calendar.DAY_OF_WEEK);
@@ -134,6 +150,37 @@ public class MainActivity extends AppCompatActivity {
         return currentTime;
     }
 
+    public JSONObject JsonFromResource(int resId){
+        InputStream is = getResources().openRawResource(resId);
+        Writer writer = new StringWriter();
+        char[] buffer = new char[1024];
+        try {
+            Reader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+            int n;
+            while ((n = reader.read(buffer)) != -1) {
+                writer.write(buffer, 0, n);
+            }
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                is.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        String jsonString = writer.toString();
+        JSONObject stopsjson = new JSONObject();
+        try {
+            stopsjson = new JSONObject(jsonString);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return stopsjson;
+    }
     // Hakee pysäkin aikataulu-jsonista seuraavan pysähtyvän vuoron
     public JSONObject nextTrip(JSONArray array) {
         stopTime = new TimeFormat();
