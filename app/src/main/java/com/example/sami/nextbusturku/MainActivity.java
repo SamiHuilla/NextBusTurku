@@ -1,6 +1,6 @@
 package com.example.sami.nextbusturku;
 
-import android.app.ProgressDialog;
+import android.app.Activity;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -12,6 +12,9 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.TextView;
@@ -36,17 +39,17 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 
 public class MainActivity extends AppCompatActivity {
     private static final String DEBUG_TAG = "HttpExample";
-    private String stringUrlStop = "http://data.foli.fi/gtfs/stop_times/stop/447"; //Yo-kylä
-    private String stringUrlStop2 = "http://data.foli.fi/gtfs/stop_times/stop/T42"; //Kauppatori
+    private String stringUrlStop = "http://data.foli.fi/gtfs/stop_times/stop/";
     private String stringUrlTrip = "http://data.foli.fi/gtfs/trips/trip/";
     private String stringUrlRoutes = "http://data.foli.fi/gtfs/routes";
     private String tripId;
     private String routeId;
     private String downloadedString;
-    private String[] stopnumbers;
+    private Object[] stopNumbers;
     protected boolean downloadComplete = false;
     protected int downloadCount = 0;
     private String stopString = "";
@@ -56,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
     private AutoCompleteTextView autoCompleteTextView;
     private TimeFormat currentTime;
     private TimeFormat stopTime;
-   // private JSONObject stopsjson = new JSONObject();
+    private JSONObject stopsjson = new JSONObject();
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
      * See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -68,20 +71,33 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        /*
-        stopsjson = JsonFromResource(R.raw.stops);
-        JSONArray numarray = stopsjson.names();
-        */
+
+        generateStopNumberArray();
+
         textView = (TextView) findViewById(R.id.myText);
         textView2 = (TextView) findViewById(R.id.myText2);
-        /*
+
         autoCompleteTextView = (AutoCompleteTextView) findViewById(R.id.autocomplete_stop);
-        ArrayAdapter adapter = new ArrayAdapter(this,android.R.layout.simple_list_item_1,stopnumbers);
+        ArrayAdapter adapter = new ArrayAdapter(this,android.R.layout.simple_list_item_1, stopNumbers);
         autoCompleteTextView.setAdapter(adapter);
-        */
+
+
         setCurrentTime();
 
-        initiateDownload(stringUrlStop2);
+        // listener for the auto complete text view, starts download when the user selects a stop
+        autoCompleteTextView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            public void onItemClick(AdapterView<?> parent, View view, int position, long rowId) {
+                String selection = (String) parent.getItemAtPosition(position);
+                selection = selection.substring(0,selection.indexOf(" - "));
+                stringUrlStop += selection;
+                initiateDownload(stringUrlStop);
+                autoCompleteTextView.dismissDropDown();
+                hideKeyboard(MainActivity.this);
+
+            }
+        });
+
+
 
 
 
@@ -90,6 +106,34 @@ public class MainActivity extends AppCompatActivity {
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
+    }
+    public static void hideKeyboard(Activity activity) {
+        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Activity.INPUT_METHOD_SERVICE);
+        //Find the currently focused view, so we can grab the correct window token from it.
+        View view = activity.getCurrentFocus();
+        //If no view currently has focus, create a new one, just so we can grab a window token from it
+        if (view == null) {
+            view = new View(activity);
+        }
+        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
+    private void generateStopNumberArray() {
+        stopsjson = JsonFromResource(R.raw.stops);
+        JSONArray numarray = stopsjson.names();
+
+        ArrayList<String> stopnumberlist = new ArrayList<>();
+        for (int i=0; i<numarray.length(); i++){
+            String number = numarray.optString(i);
+            String name = "";
+            try {
+                name = stopsjson.getJSONObject(number).getString("stop_name");
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            stopnumberlist.add(number + " - " + name);
+        }
+        Collections.sort(stopnumberlist);
+        stopNumbers =  stopnumberlist.toArray();
     }
 
     @Override
