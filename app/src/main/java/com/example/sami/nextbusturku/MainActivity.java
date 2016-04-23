@@ -43,11 +43,12 @@ import java.util.Collections;
 
 public class MainActivity extends AppCompatActivity {
     private static final String DEBUG_TAG = "HttpExample";
-    private String stringUrlStop = "http://data.foli.fi/gtfs/stop_times/stop/";
-    private String stringUrlTrip = "http://data.foli.fi/gtfs/trips/trip/";
+    private static final String stringUrlStop = "http://data.foli.fi/gtfs/stop_times/stop/";
+    private static final String stringUrlTrip = "http://data.foli.fi/gtfs/trips/trip/";
     private String stringUrlRoutes = "http://data.foli.fi/gtfs/routes";
     private String tripId;
     private String routeId;
+    private String serviceId;
     private String downloadedString;
     private Object[] stopNumbers;
     protected boolean downloadComplete = false;
@@ -67,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
     private GoogleApiClient client;
 
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -74,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
 
         generateStopNumberArray();
 
-        textView = (TextView) findViewById(R.id.myText);
+        textView = (TextView) findViewById(R.id.textView1);
         textView2 = (TextView) findViewById(R.id.myText2);
 
         autoCompleteTextView = (AutoCompleteTextView) findViewById(R.id.autocomplete_stop);
@@ -89,8 +91,7 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long rowId) {
                 String selection = (String) parent.getItemAtPosition(position);
                 selection = selection.substring(0,selection.indexOf(" - "));
-                stringUrlStop += selection;
-                initiateDownload(stringUrlStop);
+                initiateDownload(stringUrlStop+selection);
                 autoCompleteTextView.dismissDropDown();
                 hideKeyboard(MainActivity.this);
 
@@ -296,18 +297,19 @@ public class MainActivity extends AppCompatActivity {
             JSONArray tripArray = new JSONArray(downloadedString);
             JSONObject tripInfo = tripArray.getJSONObject(0);
             routeId = tripInfo.optString("route_id");
+            serviceId = tripInfo.optString("service_id");
 
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
-    // kutsutaan asynctaskin onPostExcecutesta, hakee saapuvan linjan nimen ja näyttää sen ja saapumisajan textviewissä
+    // kutsutaan asynctaskin onPostExecutesta, hakee saapuvan linjan nimen ja näyttää sen ja saapumisajan textviewissä
     public void findShortName(){
         try {
 
             JSONArray routeArray = new JSONArray(downloadedString);
             JSONObject route = getRouteObject(routeArray);
-            info = stopTime.toString()+" / "+route.optString("route_short_name");
+            info = stopTime.toStringNoSeconds()+" / Line "+route.optString("route_short_name");
             textView2.setText(info);
 
         } catch (JSONException e) {
@@ -392,20 +394,19 @@ public class MainActivity extends AppCompatActivity {
                 case 0:
                     findNextTrip();
                     initiateDownload(stringUrlTrip + tripId);
-
+                    downloadCount++;
                     currentTime = stopTime;
+                    break;
                 case 1:
                     findRoute();
                     initiateDownload(stringUrlRoutes);
-
-
+                    downloadCount++;
+                    break;
                 case 2:
                     findShortName();
-
+                    downloadCount=0;
+                    break;
             }
-            downloadCount++;
-
-
 
         }
         @Override

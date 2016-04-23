@@ -13,33 +13,43 @@
     tools:showIn="@layout/activity_main">
 
     <TextView
-        android:id="@+id/myText"
+        android:id="@+id/textView1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="" />
-
-
-
-
-
+        android:layout_below="@+id/autocomplete_stop"
+        android:text="@string/textView1"
+        android:textSize="20dp"/>
+<!--
+    <TextView
+        android:id="@+id/textView3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/autocomplete_stop"
+        android:layout_toRightOf="@id/textView1"
+        android:layout_marginLeft="100dp"
+        android:text="@string/textView3"/>
+        -->
     <TextView
         android:id="@+id/myText2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text=""
-        android:layout_below="@+id/myText"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:layout_marginTop="34dp" />
+        android:textSize="20dp"
+        android:layout_below="@+id/autocomplete_stop"
+        android:layout_toRightOf="@id/textView1"
+        android:layout_marginLeft="10dp"
+
+
+        />
 
     <AutoCompleteTextView xmlns:android="http://schemas.android.com/apk/res/android"
         android:id="@+id/autocomplete_stop"
+        android:hint="@string/autoCompleteHint"
         android:completionThreshold="1"
         android:minLines="1"
         android:maxLines="1"
         android:singleLine="true"
         android:imeOptions="actionDone"
-        android:layout_below="@+id/myText2"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         />
