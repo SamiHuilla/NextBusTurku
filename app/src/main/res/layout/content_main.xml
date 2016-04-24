@@ -54,4 +54,15 @@
         android:layout_height="wrap_content"
         />
 
+    <TextClock
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:id="@+id/textClock"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true"
+        android:format24Hour="HH:mm:ss"
+        android:textSize="44sp"
+        android:textStyle="bold"/>
+
 </RelativeLayout>

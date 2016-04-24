@@ -236,7 +236,6 @@ public class MainActivity extends AppCompatActivity {
             try {
                 nextTrip = array.getJSONObject(i);
                 arrivalTime=nextTrip.getString("arrival_time");
-              //  textView.setText(arrivalTime);
                 stopTime.update(arrivalTime);
 
             } catch (JSONException e) {
@@ -309,7 +308,7 @@ public class MainActivity extends AppCompatActivity {
 
             JSONArray routeArray = new JSONArray(downloadedString);
             JSONObject route = getRouteObject(routeArray);
-            info = stopTime.toStringNoSeconds()+" / Line "+route.optString("route_short_name");
+            info = stopTime.toStringNoSeconds()+" / Line "+route.optString("route_short_name"); // + " / Service "+serviceId;
             textView2.setText(info);
 
         } catch (JSONException e) {
