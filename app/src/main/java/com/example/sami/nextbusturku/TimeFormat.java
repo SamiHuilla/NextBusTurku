@@ -1,7 +1,7 @@
 package com.example.sami.nextbusturku;
 
 /**
- * Created by Sami on 23.2.2016.
+ * Class for formatting and comparing times. Uses 24-hour clock.
  */
 public class TimeFormat implements Comparable {
 
@@ -14,7 +14,7 @@ public class TimeFormat implements Comparable {
         minute = 0;
         second = 0;
     }
-    // String muotoa "hh:mm:ss"
+
     public TimeFormat(String time){
         String[] splitted = time.split(":");
         this.hour = Integer.parseInt(splitted[0]);
@@ -35,6 +35,10 @@ public class TimeFormat implements Comparable {
 
     }
     // returns string in format "hh:mm:ss"
+
+    /**
+     * @return string in format "hh:mm:ss"
+     */
     public String toString(){
         StringBuilder time = new StringBuilder();
         if (this.hour >= 0 && this.hour < 10){
@@ -52,7 +56,12 @@ public class TimeFormat implements Comparable {
 
         return time.toString();
     }
-    // returns string in format "hh:mm"
+
+
+    /**
+     *
+     * @return string in format "hh:mm"
+     */
     public String toStringNoSeconds(){
         StringBuilder time = new StringBuilder();
         if (this.hour >= 0 && this.hour < 10){
