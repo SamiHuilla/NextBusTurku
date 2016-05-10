@@ -34,7 +34,7 @@ public class TimeFormat implements Comparable {
         this.second = Integer.parseInt(splitted[2],10);
 
     }
-    // String formaatissa "hh:mm:ss"
+    // returns string in format "hh:mm:ss"
     public String toString(){
         StringBuilder time = new StringBuilder();
         if (this.hour >= 0 && this.hour < 10){
@@ -49,6 +49,20 @@ public class TimeFormat implements Comparable {
             time.append("0"+this.second);
         }
         else{ time.append(this.second);}
+
+        return time.toString();
+    }
+    // returns string in format "hh:mm"
+    public String toStringNoSeconds(){
+        StringBuilder time = new StringBuilder();
+        if (this.hour >= 0 && this.hour < 10){
+            time.append("0"+this.hour+":");
+        }
+        else{ time.append(this.hour+":");}
+        if (this.minute >= 0 && this.minute < 10){
+            time.append("0"+this.minute);
+        }
+        else{ time.append(this.minute);}
 
         return time.toString();
     }
