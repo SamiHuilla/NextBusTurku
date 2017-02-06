@@ -1,6 +1,6 @@
 package com.example.sami.nextbusturku;
 
-import android.app.ProgressDialog;
+import android.app.Activity;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -12,6 +12,9 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.TextView;
@@ -36,17 +39,17 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 
 public class MainActivity extends AppCompatActivity {
     private static final String DEBUG_TAG = "HttpExample";
-    private String stringUrlStop = "http://data.foli.fi/gtfs/stop_times/stop/447"; //Yo-kylä
-    private String stringUrlStop2 = "http://data.foli.fi/gtfs/stop_times/stop/T42"; //Kauppatori
-    private String stringUrlTrip = "http://data.foli.fi/gtfs/trips/trip/";
+    private static final String stringUrlStop = "http://data.foli.fi/gtfs/stop_times/stop/";
+    private static final String stringUrlTrip = "http://data.foli.fi/gtfs/trips/trip/";
     private String stringUrlRoutes = "http://data.foli.fi/gtfs/routes";
     private String tripId;
     private String routeId;
     private String downloadedString;
-    private String[] stopnumbers;
+    private Object[] stopNumbers;
     protected boolean downloadComplete = false;
     protected int downloadCount = 0;
     private String stopString = "";
@@ -56,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
     private AutoCompleteTextView autoCompleteTextView;
     private TimeFormat currentTime;
     private TimeFormat stopTime;
-   // private JSONObject stopsjson = new JSONObject();
+    private JSONObject stopsjson = new JSONObject();
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
      * See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -64,32 +67,73 @@ public class MainActivity extends AppCompatActivity {
     private GoogleApiClient client;
 
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        /*
-        stopsjson = JsonFromResource(R.raw.stops);
-        JSONArray numarray = stopsjson.names();
-        */
-        textView = (TextView) findViewById(R.id.myText);
+
+        generateStopNumberArray();
+
+        textView = (TextView) findViewById(R.id.textView1);
         textView2 = (TextView) findViewById(R.id.myText2);
-        /*
+
         autoCompleteTextView = (AutoCompleteTextView) findViewById(R.id.autocomplete_stop);
-        ArrayAdapter adapter = new ArrayAdapter(this,android.R.layout.simple_list_item_1,stopnumbers);
+        ArrayAdapter adapter = new ArrayAdapter(this,android.R.layout.simple_list_item_1, stopNumbers);
         autoCompleteTextView.setAdapter(adapter);
-        */
+
+
         setCurrentTime();
 
-        initiateDownload(stringUrlStop2);
+        // listener for the auto complete text view, starts download when the user selects a stop
+        autoCompleteTextView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            public void onItemClick(AdapterView<?> parent, View view, int position, long rowId) {
+                String selection = (String) parent.getItemAtPosition(position);
+                selection = selection.substring(0,selection.indexOf(" - "));
+                initiateDownload(stringUrlStop+selection);
+                autoCompleteTextView.dismissDropDown();
+                hideKeyboard(MainActivity.this);
 
-
+            }
+        });
 
 
 
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
+    }
+    public static void hideKeyboard(Activity activity) {
+        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Activity.INPUT_METHOD_SERVICE);
+        //Find the currently focused view, so we can grab the correct window token from it.
+        View view = activity.getCurrentFocus();
+        //If no view currently has focus, create a new one, just so we can grab a window token from it
+        if (view == null) {
+            view = new View(activity);
+        }
+        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
+
+    /**
+     * Creates an array of stops from the JSON resource for the ArrayAdapter
+     */
+    private void generateStopNumberArray() {
+        stopsjson = JsonFromResource(R.raw.stops);
+        JSONArray numarray = stopsjson.names();
+
+        ArrayList<String> stopnumberlist = new ArrayList<>();
+        for (int i=0; i<numarray.length(); i++){
+            String number = numarray.optString(i);
+            String name = "";
+            try {
+                name = stopsjson.getJSONObject(number).getString("stop_name");
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            stopnumberlist.add(number + " - " + name);
+        }
+        Collections.sort(stopnumberlist);
+        stopNumbers =  stopnumberlist.toArray();
     }
 
     @Override
@@ -114,7 +158,9 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    // When called, refreshes the current time using the information provided by Calendar.
+    /**
+     * When called, refreshes the current time using the information provided by Calendar.
+     */
     public void setCurrentTime() {
         TimeFormat time = new TimeFormat();
         Calendar c = Calendar.getInstance();
@@ -123,33 +169,12 @@ public class MainActivity extends AppCompatActivity {
         time.setSecond(c.get(Calendar.SECOND));
         currentTime = time;
     }
-    // Returns the string depending on current day
-    public String currentService(){
-        Calendar calendar = Calendar.getInstance();
-        int day = calendar.get(Calendar.DAY_OF_WEEK);
-        switch(day){
-            case Calendar.MONDAY:
-                return "A:FOLI_Arki";
-            case Calendar.TUESDAY:
-                return "A:FOLI_Arki";
-            case Calendar.WEDNESDAY:
-                return "A:FOLI_Arki";
-            case Calendar.THURSDAY:
-                return "A:FOLI_Arki";
-            case Calendar.FRIDAY:
-                return "A:FOLI_Arki";
-            case Calendar.SATURDAY:
-                return "L:FOLI_Lauantai";
-            case Calendar.SUNDAY:
-                return "S:FOLI_Pyha";
-        }
-        return null;
-    }
 
-    public TimeFormat getCurrentTime() {
-        return currentTime;
-    }
-
+    /**
+     * Parses the resource file to a String and converts it to a JSONObject
+     * @param resId
+     * @return JSONObject containing the stops
+     */
     public JSONObject JsonFromResource(int resId){
         InputStream is = getResources().openRawResource(resId);
         Writer writer = new StringWriter();
@@ -181,7 +206,12 @@ public class MainActivity extends AppCompatActivity {
         }
         return stopsjson;
     }
-    // Hakee pysäkin aikataulu-jsonista seuraavan pysähtyvän vuoron
+
+    /**
+     * Finds the next upcoming trip of the specific stop
+     * @param array Schedule JSON of the stop
+     * @return JSONObject of one single trip
+     */
     public JSONObject nextTrip(JSONArray array) {
         stopTime = new TimeFormat();
         String arrivalTime;
@@ -191,7 +221,6 @@ public class MainActivity extends AppCompatActivity {
             try {
                 nextTrip = array.getJSONObject(i);
                 arrivalTime=nextTrip.getString("arrival_time");
-              //  textView.setText(arrivalTime);
                 stopTime.update(arrivalTime);
 
             } catch (JSONException e) {
@@ -199,14 +228,19 @@ public class MainActivity extends AppCompatActivity {
             }
             // exit loop when the next arrival time has been found:
             if (stopTime.compareTo(currentTime) == 1) {
-              //  textView.setText(stopTime.toString());
                 break;
             }
 
         }
         return nextTrip;
     }
-    // Hakee routes-jsonista routeobjektin jolla on haluttu routeId
+
+
+    /**
+     * Iterates the route JSON for the searched route ID
+     * @param array JSONArray containing all the routes
+     * @return JSONObject of a route with matching ID
+     */
     public JSONObject getRouteObject(JSONArray array){
         JSONObject route = new JSONObject();
         for (int i = 0; i < array.length(); i++) {
@@ -219,7 +253,6 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
             if (route.optString("route_id").equals(routeId)) {
-                //  textView.setText(stopTime.toString());
                 break;
             }
 
@@ -227,16 +260,16 @@ public class MainActivity extends AppCompatActivity {
         return route;
     }
 
-    // kutsutaan asynctaskin onPostExcecutesta, tekee pysäkki-jsonin ja etsii siitä seuraavan tripin
+    /**
+     * Called from the downloading async task's onPostExecute method. Forms a stop JSONArray and calls nextTrip method to get the trip ID.
+     */
     public void findNextTrip(){
         stopString = downloadedString;
         try {
-            //JSONObject stop = new JSONObject(stopString);
 
             JSONArray stopArray = new JSONArray(stopString);
             JSONObject trip = nextTrip(stopArray);
             tripId = trip.optString("trip_id");
-           // textView.setText(tripId);
 
 
         } catch (JSONException e) {
@@ -245,7 +278,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    // kutsutaan asynctaskin onPostExcecutesta, tekee tripin jsonin ja hakee siitä routeId:n
+
+
+    /**
+     * Called from the downloading async task's onPostExecute method. Makes a JSONObject for single trip and gets the route ID.
+     */
     public void findRoute(){
         try {
 
@@ -253,17 +290,23 @@ public class MainActivity extends AppCompatActivity {
             JSONObject tripInfo = tripArray.getJSONObject(0);
             routeId = tripInfo.optString("route_id");
 
+
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
-    // kutsutaan asynctaskin onPostExcecutesta, hakee saapuvan linjan nimen ja näyttää sen ja saapumisajan textviewissä
+
+
+    /**
+     * Called from the downloading async task's onPostExecute method. Fetches the name/number of the bus line from the route JSONArray. Shows arrival time
+     * and line number in the textView.
+     */
     public void findShortName(){
         try {
 
             JSONArray routeArray = new JSONArray(downloadedString);
             JSONObject route = getRouteObject(routeArray);
-            info = stopTime.toString()+" / "+route.optString("route_short_name");
+            info = stopTime.toStringNoSeconds()+" / Line "+route.optString("route_short_name");
             textView2.setText(info);
 
         } catch (JSONException e) {
@@ -322,11 +365,12 @@ public class MainActivity extends AppCompatActivity {
             textView.setText("No network connection available.");
         }
     }
-    // Uses AsyncTask to create a task away from the main UI thread. This task takes a
-    // URL string and uses it to create an HttpUrlConnection. Once the connection
-    // has been established, the AsyncTask downloads the contents of the webpage as
-    // an InputStream. Finally, the InputStream is converted into a string, which is
-    // displayed in the UI by the AsyncTask's onPostExecute method.
+
+    /**
+     * Uses AsyncTask to create a task away from the main UI thread. This task takes a URL string and uses it to create an HttpUrlConnection.
+     * Once the connection has been established, the AsyncTask downloads the contents of the web page as an InputStream.
+     * Finally, the InputStream is converted into a string, which is displayed in the UI by the AsyncTask's onPostExecute method.
+     */
     private class DownloadWebpageTask extends AsyncTask<String, Void, String> {
         @Override
         protected String doInBackground(String... urls) {
@@ -339,7 +383,12 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // onPostExecute displays the results of the AsyncTask.
+
+
+        /**
+         * Performs post-download actions depending on the current value of downloadCount.
+         * @param result
+         */
         @Override
         protected void onPostExecute(String result) {
             downloadedString = result;
@@ -348,20 +397,19 @@ public class MainActivity extends AppCompatActivity {
                 case 0:
                     findNextTrip();
                     initiateDownload(stringUrlTrip + tripId);
-
+                    downloadCount++;
                     currentTime = stopTime;
+                    break;
                 case 1:
                     findRoute();
                     initiateDownload(stringUrlRoutes);
-
-
+                    downloadCount++;
+                    break;
                 case 2:
                     findShortName();
-
+                    downloadCount=0;
+                    break;
             }
-            downloadCount++;
-
-
 
         }
         @Override
@@ -369,9 +417,14 @@ public class MainActivity extends AppCompatActivity {
             downloadComplete = false;
         }
 
-        // Given a URL, establishes an HttpUrlConnection and retrieves
-        // the web page content as a InputStream, which it returns as
-        // a string.
+
+
+        /**
+         * Given a URL, establishes an HttpUrlConnection and retrieves the web page content as a InputStream, which it returns as a string.
+         * @param myurl URL of the web page
+         * @return String of the web page content, JSON formatted.
+         * @throws IOException
+         */
         private String downloadUrl(String myurl) throws IOException {
             InputStream is = null;
 
@@ -402,7 +455,14 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // Reads an InputStream and converts it to a String.
+
+        /**
+         * Reads an InputStream and converts it to a String.
+         * @param stream
+         * @return String converted from the InputStream
+         * @throws IOException
+         * @throws UnsupportedEncodingException
+         */
         public String readIt(InputStream stream) throws IOException, UnsupportedEncodingException {
             BufferedReader reader = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
             StringBuilder total = new StringBuilder();
