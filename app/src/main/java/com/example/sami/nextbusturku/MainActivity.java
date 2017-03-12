@@ -12,7 +12,6 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -43,23 +42,33 @@ import java.util.Collections;
 
 public class MainActivity extends AppCompatActivity {
     private static final String DEBUG_TAG = "HttpExample";
-    private static final String stringUrlStop = "http://data.foli.fi/gtfs/stop_times/stop/";
-    private static final String stringUrlTrip = "http://data.foli.fi/gtfs/trips/trip/";
-    private String stringUrlRoutes = "http://data.foli.fi/gtfs/routes";
+    private static final String STRING_URL_STOP = "http://data.foli.fi/gtfs/stop_times/stop/";
+    private static final String STRING_URL_TRIP = "http://data.foli.fi/gtfs/trips/trip/";
+    private static final String STRING_URL_ROUTES = "http://data.foli.fi/gtfs/routes";
     private String tripId;
+    private String tripId1;
+    private String tripId2;
+    private String tripId3;
     private String routeId;
     private String serviceId;
     private String downloadedString;
     private Object[] stopNumbers;
     protected boolean downloadComplete = false;
     protected int downloadCount = 0;
-    private String stopString = "";
+    protected int tripCount = 0;
+    protected String routes = "";
+    protected String stopString = "";
+    protected String tripString = "";
+    protected String tripString2 = "";
+    protected String tripString3 = "";
     private String info = "";
     private TextView textView;
     private TextView textView2;
+    private TextView textView3;
+    private TextView textView4;
     private AutoCompleteTextView autoCompleteTextView;
     private TimeFormat currentTime;
-    private TimeFormat stopTime;
+    private TimeFormat stopTime = new TimeFormat();
     private JSONObject stopsjson = new JSONObject();
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
@@ -78,6 +87,8 @@ public class MainActivity extends AppCompatActivity {
 
         textView = (TextView) findViewById(R.id.textView1);
         textView2 = (TextView) findViewById(R.id.myText2);
+        textView3 = (TextView) findViewById(R.id.myText3);
+        textView4 = (TextView) findViewById(R.id.myText4);
 
         autoCompleteTextView = (AutoCompleteTextView) findViewById(R.id.autocomplete_stop);
         ArrayAdapter adapter = new ArrayAdapter(this,android.R.layout.simple_list_item_1, stopNumbers);
@@ -91,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long rowId) {
                 String selection = (String) parent.getItemAtPosition(position);
                 selection = selection.substring(0,selection.indexOf(" - "));
-                initiateDownload(stringUrlStop+selection);
+                initiateDownload(new String[]{STRING_URL_STOP +selection, STRING_URL_ROUTES});
                 autoCompleteTextView.dismissDropDown();
                 hideKeyboard(MainActivity.this);
 
@@ -119,22 +130,22 @@ public class MainActivity extends AppCompatActivity {
         imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
     private void generateStopNumberArray() {
-        stopsjson = JsonFromResource(R.raw.stops);
-        JSONArray numarray = stopsjson.names();
+        stopsjson = JsonFromResource(R.raw.stops_march17);
+        JSONArray numArray = stopsjson.names();
 
-        ArrayList<String> stopnumberlist = new ArrayList<>();
-        for (int i=0; i<numarray.length(); i++){
-            String number = numarray.optString(i);
+        ArrayList<String> stopNumberList = new ArrayList<>();
+        for (int i=0; i<numArray.length(); i++){
+            String number = numArray.optString(i);
             String name = "";
             try {
                 name = stopsjson.getJSONObject(number).getString("stop_name");
             } catch (JSONException e) {
                 e.printStackTrace();
             }
-            stopnumberlist.add(number + " - " + name);
+            stopNumberList.add(number + " - " + name);
         }
-        Collections.sort(stopnumberlist);
-        stopNumbers =  stopnumberlist.toArray();
+        Collections.sort(stopNumberList);
+        stopNumbers =  stopNumberList.toArray();
     }
 
     @Override
@@ -228,15 +239,14 @@ public class MainActivity extends AppCompatActivity {
     }
     // Hakee pysäkin aikataulu-jsonista seuraavan pysähtyvän vuoron
     public JSONObject nextTrip(JSONArray array) {
-        stopTime = new TimeFormat();
-        String arrivalTime;
+        String departureTime;
         JSONObject nextTrip = new JSONObject();
         for (int i = 0; i < array.length(); i++) {
 
             try {
                 nextTrip = array.getJSONObject(i);
-                arrivalTime=nextTrip.getString("arrival_time");
-                stopTime.update(arrivalTime);
+                departureTime=nextTrip.getString("departure_time");
+                stopTime.update(departureTime);
 
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -250,8 +260,62 @@ public class MainActivity extends AppCompatActivity {
         }
         return nextTrip;
     }
+    public ArrayList<JSONObject> nextThreeTrips(JSONArray array) {
+        String departureTime;
+        JSONObject nextTrip = new JSONObject();
+        final int arrayLength = array.length();
+        ArrayList<JSONObject> threeTrips = new ArrayList<>();
+        int indexOfFirstTrip = 0;
+        for (int i = 0; i < arrayLength; i++) {
+
+            try {
+                nextTrip = array.getJSONObject(i);
+                departureTime=nextTrip.getString("departure_time");
+                stopTime.update(departureTime);
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+                Log.d(DEBUG_TAG, "RouteString: " + routes.substring(0,30) + ", tripString: " + tripString.substring(0, 30));
+            }
+            // exit loop when the next arrival time has been found:
+            if (stopTime.compareTo(currentTime) == 1) {
+                    indexOfFirstTrip = i;
+                    break;
+            }
+
+        }
+        //add the next trip to the list
+        threeTrips.add(nextTrip);
+        //add the next two - jump to the beginning of the trip array after midnight
+        if ((indexOfFirstTrip+1) >= arrayLength) {
+            try {
+                threeTrips.add(array.getJSONObject(0));
+                threeTrips.add(array.getJSONObject(1));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+        else if ((indexOfFirstTrip+2) >= arrayLength && (indexOfFirstTrip+1) < arrayLength) {
+            try {
+                threeTrips.add(array.getJSONObject(indexOfFirstTrip + 1));
+                threeTrips.add(array.getJSONObject(0));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+        else{
+            try {
+                threeTrips.add(array.getJSONObject(indexOfFirstTrip + 1));
+                threeTrips.add(array.getJSONObject(indexOfFirstTrip + 2));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return threeTrips;
+    }
     // Hakee routes-jsonista routeobjektin jolla on haluttu routeId
-    public JSONObject getRouteObject(JSONArray array){
+    public JSONObject getRouteObject(JSONArray array, String routeId){
         JSONObject route = new JSONObject();
         for (int i = 0; i < array.length(); i++) {
 
@@ -287,26 +351,56 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
-
-
-    // kutsutaan asynctaskin onPostExcecutesta, tekee tripin jsonin ja hakee siitä routeId:n
-    public void findRoute(){
+    // kutsutaan asynctaskin onPostExcecutesta, tekee pysäkki-jsonin ja etsii siitä 3 seuraavaa trippiä
+    public String[] findNextThreeTrips(String stopString){
+       // stopString = downloadedString;
+        String[] tripIds = new String[3];
+        String[] departureTimes = new String[3];
         try {
+            //JSONObject stop = new JSONObject(stopString);
 
-            JSONArray tripArray = new JSONArray(downloadedString);
-            JSONObject tripInfo = tripArray.getJSONObject(0);
-            routeId = tripInfo.optString("route_id");
-            serviceId = tripInfo.optString("service_id");
+            JSONArray stopArray = new JSONArray(stopString);
+            ArrayList<JSONObject> threeTrips = nextThreeTrips(stopArray);
+            tripIds[0] = threeTrips.get(0).optString("trip_id");
+            tripIds[1] = threeTrips.get(1).optString("trip_id");
+            tripIds[2] = threeTrips.get(2).optString("trip_id");
+            departureTimes[0] = threeTrips.get(0).optString("departure_time");
+            departureTimes[1] = threeTrips.get(1).optString("departure_time");
+            departureTimes[2] = threeTrips.get(2).optString("departure_time");
+
+            textView2.setText(departureTimes[0].substring(0,5));
+            textView3.setText(departureTimes[1].substring(0,5));
+            textView4.setText(departureTimes[2].substring(0,5));
 
         } catch (JSONException e) {
             e.printStackTrace();
         }
+        return tripIds;
     }
+
+
+    // kutsutaan asynctaskin onPostExcecutesta, tekee tripin jsonin ja hakee siitä routeId:n
+    public String findRoute(String tripString){
+        String routeId = "";
+        try {
+
+            JSONArray tripArray = new JSONArray(tripString);
+            JSONObject tripInfo = tripArray.getJSONObject(0);
+            routeId = tripInfo.optString("route_id");
+           // serviceId = tripInfo.optString("service_id");
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return routeId;
+    }
+
+    /*
     // kutsutaan asynctaskin onPostExecutesta, hakee saapuvan linjan nimen ja näyttää sen ja saapumisajan textviewissä
     public void findShortName(){
         try {
 
-            JSONArray routeArray = new JSONArray(downloadedString);
+            JSONArray routeArray = new JSONArray(routes);
             JSONObject route = getRouteObject(routeArray);
             info = stopTime.toStringNoSeconds()+" / Line "+route.optString("route_short_name"); // + " / Service "+serviceId;
             textView2.setText(info);
@@ -314,6 +408,22 @@ public class MainActivity extends AppCompatActivity {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+    }
+    */
+    // kutsutaan asynctaskin onPostExecutesta, hakee saapuvan linjan nimen ja näyttää sen ja saapumisajan textviewissä
+    public String getContentForTextView(String routeString, String routeId){
+        String content = "";
+        try {
+
+            JSONArray routeArray = new JSONArray(routeString);
+            JSONObject route = getRouteObject(routeArray, routeId);
+            content = " / Line "+route.optString("route_short_name"); // + " / Service "+serviceId;
+
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return content;
     }
 
 
@@ -357,7 +467,7 @@ public class MainActivity extends AppCompatActivity {
         client.disconnect();
     }
 
-    public void initiateDownload (String url){
+    public void initiateDownload (String[] url){
         ConnectivityManager connMgr = (ConnectivityManager)
                 getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
@@ -372,33 +482,63 @@ public class MainActivity extends AppCompatActivity {
     // has been established, the AsyncTask downloads the contents of the webpage as
     // an InputStream. Finally, the InputStream is converted into a string, which is
     // displayed in the UI by the AsyncTask's onPostExecute method.
-    private class DownloadWebpageTask extends AsyncTask<String, Void, String> {
+    private class DownloadWebpageTask extends AsyncTask<String, Void, String[]> {
         @Override
-        protected String doInBackground(String... urls) {
-
+        protected String[] doInBackground(String... urls) {
+            String[] downloadedStrings = new String[urls.length];
             // params comes from the execute() call: params[0] is the url.
-            try {
-                return downloadUrl(urls[0]);
-            } catch (IOException e) {
-                return "Unable to retrieve web page. URL may be invalid.";
+            for (int i = 0; i < urls.length; i++) {
+                try {
+                    downloadedStrings[i] = downloadUrl(urls[i]);
+                } catch (IOException e) {
+                    downloadedStrings[i] = "Unable to retrieve web page. URL may be invalid.";
+                }
             }
+            return downloadedStrings;
         }
 
         // onPostExecute displays the results of the AsyncTask.
         @Override
-        protected void onPostExecute(String result) {
-            downloadedString = result;
+        protected void onPostExecute(String[] result) {
+            //downloadedString = result;
             downloadComplete = true;
-            switch (downloadCount){
+            switch (downloadCount) {
                 case 0:
-                    findNextTrip();
-                    initiateDownload(stringUrlTrip + tripId);
+                    String stopData = result[0];
+                    routes = result[1];
+                    String[] nextThreeTrips = findNextThreeTrips(stopData);
                     downloadCount++;
-                    currentTime = stopTime;
+                    initiateDownload(new String[]{STRING_URL_TRIP + nextThreeTrips[0],
+                                                          STRING_URL_TRIP + nextThreeTrips[1],
+                                                          STRING_URL_TRIP + nextThreeTrips[2]});
+                    break;
+                case 1:
+                    String[] tripStrings;
+                    tripStrings = result;
+
+                    String routeId1 = findRoute(tripStrings[0]);
+                    textView2.append(getContentForTextView(routes, routeId1));
+
+                    String routeId2 = findRoute(tripStrings[1]);
+                    textView3.append(getContentForTextView(routes, routeId2));
+
+                    String routeId3= findRoute(tripStrings[2]);
+                    textView4.append(getContentForTextView(routes, routeId3));
+
+                    downloadCount = 0;
+
+                    break;
+
+            }
+                    /*
+                    findNextTrip();
+                    initiateDownload(STRING_URL_TRIP + tripId);
+                   // downloadCount++;
+                   // currentTime = stopTime;
                     break;
                 case 1:
                     findRoute();
-                    initiateDownload(stringUrlRoutes);
+                    initiateDownload(STRING_URL_ROUTES);
                     downloadCount++;
                     break;
                 case 2:
@@ -406,6 +546,7 @@ public class MainActivity extends AppCompatActivity {
                     downloadCount=0;
                     break;
             }
+            */
 
         }
         @Override
